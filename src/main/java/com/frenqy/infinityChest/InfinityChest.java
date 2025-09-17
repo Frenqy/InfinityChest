@@ -1,6 +1,7 @@
 package com.frenqy.infinityChest;
 
 import com.frenqy.infinityChest.proxy.CommonProxy;
+import com.frenqy.infinitychest.Tags;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;

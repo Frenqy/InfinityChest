@@ -11,8 +11,12 @@ import net.minecraftforge.common.util.Constants;
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class InfinityChestData extends WorldSavedData {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static final String DATA_NAME = "infinity_chest_data";
     private static final int INITIAL_CAPACITY = 10;
@@ -79,27 +83,9 @@ public class InfinityChestData extends WorldSavedData {
     public ItemStack insertItem(int slot, @Nonnull ItemStack stack, boolean simulate) {
         if (stack.isEmpty()) return ItemStack.EMPTY;
 
-        // 如果指定槽位，尝试插入到该槽位
-        if (slot >= 0 && slot < capacity) {
-            ItemStack existing = items.get(slot);
-            if (existing.isEmpty()) {
-                if (!simulate) {
-                    items.set(slot, stack.copy());
-                }
-                return ItemStack.EMPTY;
-            } else if (existing.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(existing, stack)) {
-                int maxSize = Math.min(stack.getMaxStackSize(), 64);
-                int canInsert = maxSize - existing.getCount();
-                if (canInsert > 0) {
-                    int toInsert = Math.min(canInsert, stack.getCount());
-                    if (!simulate) {
-                        existing.setCount(existing.getCount() + toInsert);
-                    }
-                    ItemStack remainder = stack.copy();
-                    remainder.setCount(stack.getCount() - toInsert);
-                    return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
-                }
-            }
+        // 如果插入一个物品后槽位超出当前容量，先扩容
+        if (getTotalUsedSlots() + 1 >= capacity) {
+            expandCapacity();
         }
 
         // 尝试插入到任何可用槽位
@@ -123,12 +109,6 @@ public class InfinityChestData extends WorldSavedData {
                     return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
                 }
             }
-        }
-
-        // 如果没有空间，扩容并重试
-        if (!simulate) {
-            expandCapacity();
-            return insertItem(-1, stack, false);
         }
 
         return stack;
@@ -185,6 +165,16 @@ public class InfinityChestData extends WorldSavedData {
         return count;
     }
 
+    public int getTotalUsedSlots() {
+        int used = 0;
+        for (ItemStack stack : items) {
+            if (!stack.isEmpty()) {
+                used++;
+            }
+        }
+        return used;
+    }
+
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
         if (nbt.hasKey("ChestUUID")) {
@@ -210,7 +200,7 @@ public class InfinityChestData extends WorldSavedData {
 
         for (int i = 0; i < itemList.tagCount(); i++) {
             NBTTagCompound itemNBT = itemList.getCompoundTagAt(i);
-            int slot = itemNBT.getByte("Slot") & 255;
+            int slot = itemNBT.getInteger("Slot");
 
             if (slot >= 0 && slot < capacity) {
                 items.set(slot, new ItemStack(itemNBT));
@@ -231,7 +221,7 @@ public class InfinityChestData extends WorldSavedData {
             ItemStack stack = items.get(i);
             if (!stack.isEmpty()) {
                 NBTTagCompound itemNBT = new NBTTagCompound();
-                itemNBT.setByte("Slot", (byte) i);
+                itemNBT.setInteger("Slot", i);
                 stack.writeToNBT(itemNBT);
                 itemList.appendTag(itemNBT);
             }
