@@ -193,18 +193,14 @@ public class InfinityChestData extends WorldSavedData {
         this.items.clear();
         NBTTagList itemList = nbt.getTagList("Items", Constants.NBT.TAG_COMPOUND);
 
-        // 确保有足够的槽位
-        while (items.size() < capacity) {
-            items.add(ItemStack.EMPTY);
-        }
 
         for (int i = 0; i < itemList.tagCount(); i++) {
             NBTTagCompound itemNBT = itemList.getCompoundTagAt(i);
-            int slot = itemNBT.getInteger("Slot");
+            items.add(new ItemStack(itemNBT));
+        }
 
-            if (slot >= 0 && slot < capacity) {
-                items.set(slot, new ItemStack(itemNBT));
-            }
+        while (items.size() < capacity) {
+            items.add(ItemStack.EMPTY);
         }
     }
 
@@ -226,6 +222,7 @@ public class InfinityChestData extends WorldSavedData {
                 itemList.appendTag(itemNBT);
             }
         }
+
         compound.setTag("Items", itemList);
 
         return compound;
