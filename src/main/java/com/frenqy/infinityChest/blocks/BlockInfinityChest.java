@@ -19,6 +19,7 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraftforge.items.IItemHandler;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -40,22 +41,49 @@ public class BlockInfinityChest extends Block implements ITileEntityProvider {
     @Override
     public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn,
                                    EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
-        if (!worldIn.isRemote && playerIn.isSneaking() && playerIn.getHeldItem(hand).isEmpty()) {
-            TileEntity te = worldIn.getTileEntity(pos);
-            if (te instanceof TileEntityInfinityChest) {
-                TileEntityInfinityChest chest = (TileEntityInfinityChest) te;
-                ItemStack chestItem = new ItemStack(ModBlocks.INFINITY_CHEST_ITEM);
+        if (!worldIn.isRemote && playerIn.getHeldItem(hand).isEmpty()) {
+            if(playerIn.isSneaking()){
+                TileEntity te = worldIn.getTileEntity(pos);
+                if (te instanceof TileEntityInfinityChest) {
+                    TileEntityInfinityChest chest = (TileEntityInfinityChest) te;
+                    ItemStack chestItem = new ItemStack(ModBlocks.INFINITY_CHEST_ITEM);
 
-                UUID chestUUID = chest.getChestUUID();
-                if (chestUUID != null) {
-                    NBTTagCompound nbt = new NBTTagCompound();
-                    nbt.setString("ChestUUID", chestUUID.toString());
-                    chestItem.setTagCompound(nbt);
+                    UUID chestUUID = chest.getChestUUID();
+                    if (chestUUID != null) {
+                        NBTTagCompound nbt = new NBTTagCompound();
+                        nbt.setString("ChestUUID", chestUUID.toString());
+                        chestItem.setTagCompound(nbt);
+                    }
+
+                    worldIn.setBlockToAir(pos);
+                    playerIn.addItemStackToInventory(chestItem);
+                    return true;
                 }
-
-                worldIn.setBlockToAir(pos);
-                playerIn.addItemStackToInventory(chestItem);
-                return true;
+            } else {
+                TileEntity te = worldIn.getTileEntity(pos);
+                if (te instanceof TileEntityInfinityChest) {
+                    // try push item to down block
+                    TileEntity blockEntityBelow = worldIn.getTileEntity(pos.down());
+                    if (blockEntityBelow != null){
+                        IItemHandler downHandler = blockEntityBelow.getCapability(net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, EnumFacing.UP);
+                        if (downHandler != null){
+                            TileEntityInfinityChest chest = (TileEntityInfinityChest) te;
+                            IItemHandler chestHandler = chest.getCapability(net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+                            // find first non-empty slot
+                            for (int i = 0; i < chestHandler.getSlots(); i++) {
+                                ItemStack stack = chestHandler.getStackInSlot(i);
+                                if (!stack.isEmpty()) {
+                                    ItemStack extracted = chestHandler.extractItem(i, stack.getCount(), false);
+                                    if (!extracted.isEmpty()) {
+                                        downHandler.insertItem(0, extracted, false);
+                                        chest.markDirty();
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         return false;
