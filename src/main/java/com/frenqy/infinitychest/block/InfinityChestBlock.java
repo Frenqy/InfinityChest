@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.jetbrains.annotations.Nullable;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import java.util.UUID;
@@ -99,5 +101,13 @@ public class InfinityChestBlock extends BaseEntityBlock {
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+
+    // 静态方法用于注册 capability
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                com.frenqy.infinitychest.blockentity.ModBlockEntities.INFINITY_CHEST.get(),
+                (blockEntity, side) -> ((InfinityChestBlockEntity) blockEntity).getItemHandler(side));
     }
 }

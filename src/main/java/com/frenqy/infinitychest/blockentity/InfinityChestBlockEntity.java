@@ -14,16 +14,21 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.items.IItemHandler;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class InfinityChestBlockEntity extends BlockEntity implements Container {
     private UUID chestUUID;
     private InfinityChestDataManager dataManager;
     private List<ItemStack> cachedItems; // 缓存物品列表
     private int cachedSize = -1; // 缓存容器大小
+    private IItemHandler itemHandler; // Capability 处理器
 
     public InfinityChestBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.INFINITY_CHEST.get(), pos, blockState);
         this.chestUUID = UUID.randomUUID(); // 初始化时生成UUID
+        this.itemHandler = new InfinityChestItemHandler();
     }
 
     private InfinityChestDataManager getDataManager() {
@@ -265,6 +270,104 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         InfinityChestDataManager manager = getDataManager();
         if (manager != null && cachedItems != null) {
             manager.saveChestDataImmediately(chestUUID);
+        }
+    }
+
+    public @Nullable IItemHandler getItemHandler(@Nullable net.minecraft.core.Direction side) {
+        return itemHandler;
+    }
+
+    // IItemHandler 实现类
+    private class InfinityChestItemHandler implements IItemHandler {
+
+        @Override
+        public int getSlots() {
+            return getContainerSize();
+        }
+
+        @Override
+        public @NotNull ItemStack getStackInSlot(int slot) {
+            if (slot < 0 || slot >= getSlots()) {
+                return ItemStack.EMPTY;
+            }
+            return getItem(slot);
+        }
+
+        @Override
+        public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            if (slot < 0 || slot >= getSlots()) {
+                return stack;
+            }
+
+            ItemStack existing = getItem(slot);
+
+            if (!existing.isEmpty() && !ItemStack.isSameItemSameComponents(existing, stack)) {
+                return stack;
+            }
+
+            int maxStackSize = Math.min(getSlotLimit(slot), stack.getMaxStackSize());
+            int currentCount = existing.getCount();
+            int insertCount = Math.min(stack.getCount(), maxStackSize - currentCount);
+
+            if (insertCount <= 0) {
+                return stack;
+            }
+
+            if (!simulate) {
+                if (existing.isEmpty()) {
+                    ItemStack newStack = stack.copy();
+                    newStack.setCount(insertCount);
+                    setItem(slot, newStack);
+                } else {
+                    existing.grow(insertCount);
+                    setItem(slot, existing);
+                }
+            }
+
+            ItemStack remainder = stack.copy();
+            remainder.shrink(insertCount);
+            return remainder;
+        }
+
+        @Override
+        public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (amount <= 0 || slot < 0 || slot >= getSlots()) {
+                return ItemStack.EMPTY;
+            }
+
+            ItemStack existing = getItem(slot);
+            if (existing.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            int extractCount = Math.min(amount, existing.getCount());
+            ItemStack extracted = existing.copy();
+            extracted.setCount(extractCount);
+
+            if (!simulate) {
+                if (extractCount >= existing.getCount()) {
+                    setItem(slot, ItemStack.EMPTY);
+                } else {
+                    existing.shrink(extractCount);
+                    setItem(slot, existing);
+                }
+            }
+
+            return extracted;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+            return true;
         }
     }
 }

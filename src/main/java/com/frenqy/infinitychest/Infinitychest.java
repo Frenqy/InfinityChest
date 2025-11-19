@@ -29,6 +29,7 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -106,6 +107,9 @@ public class Infinitychest {
 
         // Register the creative mode tab event
         modEventBus.addListener(this::addCreative);
+
+        // Register capabilities
+        modEventBus.addListener(InfinityChestBlock::registerCapabilities);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
