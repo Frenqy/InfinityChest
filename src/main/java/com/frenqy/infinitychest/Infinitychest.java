@@ -2,6 +2,7 @@ package com.frenqy.infinitychest;
 
 import com.frenqy.infinitychest.block.InfinityChestBlock;
 import com.frenqy.infinitychest.blockentity.ModBlockEntities;
+import com.frenqy.infinitychest.item.InfinityChestBlockItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -59,7 +60,7 @@ public class Infinitychest {
 
     // Register the InfinityChest block item
     public static final DeferredItem<BlockItem> INFINITY_CHEST_ITEM = ITEMS.register("infinity_chest",
-            () -> new BlockItem(INFINITY_CHEST.get(), new Item.Properties()));
+            () -> new InfinityChestBlockItem(INFINITY_CHEST.get(), new Item.Properties()));
 
     // Create a creative mode tab for InfinityChest
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> INFINITY_CHEST_TAB = CREATIVE_MODE_TABS
