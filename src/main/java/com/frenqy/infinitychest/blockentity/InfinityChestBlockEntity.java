@@ -45,6 +45,22 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         cachedSize = -1;
     }
 
+    // 检查是否需要扩容
+    private void checkAndExpand() {
+        InfinityChestDataManager manager = getDataManager();
+        if (manager == null)
+            return;
+
+        NonNullList<ItemStack> items = getItems();
+        int currentSize = manager.getChestSize(chestUUID);
+
+        // 检查最后一个槽位是否被占用
+        if (currentSize > 0 && currentSize <= items.size() && !items.get(currentSize - 1).isEmpty()) {
+            items = manager.expandChestIfNeeded(chestUUID);
+            invalidateCache(); // 清除缓存以反映新的容器大小
+        }
+    }
+
     // 智能添加物品的方法，支持自动扩容
     public ItemStack insertItem(ItemStack stack) {
         if (stack.isEmpty())
@@ -176,6 +192,8 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         InfinityChestDataManager manager = getDataManager();
         if (manager != null) {
             manager.setChestItems(chestUUID, items);
+            // 检查并执行扩容（当第10个槽位被填满时）
+            checkAndExpand();
         }
         this.setChanged();
     }
