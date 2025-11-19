@@ -23,9 +23,11 @@ public class InfinityChestDataManager {
     private static final int EXPAND_SIZE = 10; // 每次扩容大小
 
     private static InfinityChestDataManager instance;
-    private Map<UUID, NonNullList<ItemStack>> chestData = new HashMap<>();
-    private Map<UUID, Integer> chestSizes = new HashMap<>(); // 存储每个箱子的容量
+    private final Map<UUID, NonNullList<ItemStack>> chestData = new HashMap<>();
+    private final Map<UUID, Integer> chestSizes = new HashMap<>(); // 存储每个箱子的容量
+    private final Map<UUID, Boolean> dirtyChests = new HashMap<>(); // 跟踪需要保存的箱子
     private Level level;
+    private File dataDir; // 缓存数据目录
 
     public static InfinityChestDataManager getInstance(Level level) {
         if (instance == null) {
@@ -36,24 +38,29 @@ public class InfinityChestDataManager {
     }
 
     public NonNullList<ItemStack> getChestItems(UUID chestUUID) {
-        if (!chestData.containsKey(chestUUID)) {
+        NonNullList<ItemStack> items = chestData.get(chestUUID);
+        if (items == null) {
             loadChestData(chestUUID);
-        }
+            items = chestData.get(chestUUID);
 
-        if (!chestData.containsKey(chestUUID)) {
-            // 创建新的箱子数据
-            chestSizes.put(chestUUID, INITIAL_SIZE);
-            NonNullList<ItemStack> newItems = NonNullList.withSize(INITIAL_SIZE, ItemStack.EMPTY);
-            chestData.put(chestUUID, newItems);
-            saveChestData(chestUUID); // 立即保存新箱子
+            if (items == null) {
+                // 创建新的箱子数据
+                items = NonNullList.withSize(INITIAL_SIZE, ItemStack.EMPTY);
+                chestData.put(chestUUID, items);
+                chestSizes.put(chestUUID, INITIAL_SIZE);
+                markDirty(chestUUID);
+            }
         }
-
-        return chestData.get(chestUUID);
+        return items;
     }
 
     public void setChestItems(UUID chestUUID, NonNullList<ItemStack> items) {
         chestData.put(chestUUID, items);
-        saveChestData(chestUUID);
+        markDirty(chestUUID);
+    }
+
+    private void markDirty(UUID chestUUID) {
+        dirtyChests.put(chestUUID, true);
     }
 
     public int getChestSize(UUID chestUUID) {
@@ -65,48 +72,20 @@ public class InfinityChestDataManager {
         int currentSize = getChestSize(chestUUID);
 
         // 检查是否需要扩容（当最后一个位置被占用时）
-        if (currentSize > 0 && !items.get(currentSize - 1).isEmpty()) {
+        if (currentSize > 0 && currentSize <= items.size() && !items.get(currentSize - 1).isEmpty()) {
             int newSize = currentSize + EXPAND_SIZE;
-            NonNullList<ItemStack> newItems = NonNullList.withSize(newSize, ItemStack.EMPTY);
 
-            // 复制旧数据
-            for (int i = 0; i < currentSize; i++) {
-                newItems.set(i, items.get(i));
+            // 原地扩容：直接添加新的空槽位
+            for (int i = currentSize; i < newSize; i++) {
+                items.add(ItemStack.EMPTY);
             }
 
-            chestData.put(chestUUID, newItems);
             chestSizes.put(chestUUID, newSize);
-            saveChestData(chestUUID);
+            markDirty(chestUUID);
 
-            LOGGER.info("Expanded chest {} from {} to {} slots", chestUUID.toString().substring(0, 8), currentSize,
+            LOGGER.debug("Expanded chest {} from {} to {} slots", chestUUID.toString().substring(0, 8), currentSize,
                     newSize);
-            return newItems;
-        }
-
-        return items;
-    }
-
-    // 强制扩容方法，用于确保有足够空间
-    public NonNullList<ItemStack> ensureCapacity(UUID chestUUID, int neededSlots) {
-        NonNullList<ItemStack> items = getChestItems(chestUUID);
-        int currentSize = getChestSize(chestUUID);
-
-        if (neededSlots > currentSize) {
-            int newSize = ((neededSlots - 1) / EXPAND_SIZE + 1) * EXPAND_SIZE; // 向上取整到最近的扩容单位
-            NonNullList<ItemStack> newItems = NonNullList.withSize(newSize, ItemStack.EMPTY);
-
-            // 复制旧数据
-            for (int i = 0; i < Math.min(currentSize, items.size()); i++) {
-                newItems.set(i, items.get(i));
-            }
-
-            chestData.put(chestUUID, newItems);
-            chestSizes.put(chestUUID, newSize);
-            saveChestData(chestUUID);
-
-            LOGGER.info("Ensured capacity for chest {} from {} to {} slots", chestUUID.toString().substring(0, 8),
-                    currentSize, newSize);
-            return newItems;
+            return items;
         }
 
         return items;
@@ -114,29 +93,40 @@ public class InfinityChestDataManager {
 
     public void removeChestData(UUID chestUUID) {
         chestData.remove(chestUUID);
+        chestSizes.remove(chestUUID);
+        dirtyChests.remove(chestUUID);
         deleteChestData(chestUUID);
     }
 
     public void loadData() {
-        // 不再需要预加载所有数据，数据将在需要时动态加载
         if (level == null || level.isClientSide())
             return;
 
-        File worldDir = level.getServer().getServerDirectory().toFile();
-        File dataDir = new File(worldDir, "data");
-        dataDir.mkdirs();
-
-        LOGGER.info("InfinityChest data directory initialized: " + dataDir.getAbsolutePath());
+        if (dataDir == null) {
+            File worldDir = level.getServer().getServerDirectory().toFile();
+            dataDir = new File(worldDir, "data");
+            dataDir.mkdirs();
+            LOGGER.info("InfinityChest data directory initialized: {}", dataDir.getAbsolutePath());
+        }
     }
 
     public void saveData() {
         if (level == null || level.isClientSide())
             return;
 
-        // 保存所有在内存中的数据
-        for (UUID chestUUID : chestData.keySet()) {
-            saveChestData(chestUUID);
-        }
+        // 只保存被标记为脏的数据
+        dirtyChests.entrySet().removeIf(entry -> {
+            if (entry.getValue()) {
+                saveChestData(entry.getKey());
+            }
+            return entry.getValue();
+        });
+    }
+
+    // 即时保存单个箱子数据
+    public void saveChestDataImmediately(UUID chestUUID) {
+        saveChestData(chestUUID);
+        dirtyChests.remove(chestUUID);
     }
 
     private void loadChestData(UUID chestUUID) {
@@ -144,9 +134,10 @@ public class InfinityChestDataManager {
             return;
 
         try {
-            File worldDir = level.getServer().getServerDirectory().toFile();
-            File dataDir = new File(worldDir, "data");
-            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID.toString() + DATA_SUFFIX);
+            if (dataDir == null) {
+                loadData(); // 初始化dataDir
+            }
+            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID + DATA_SUFFIX);
 
             if (dataFile.exists()) {
                 CompoundTag chestTag = NbtIo.readCompressed(dataFile.toPath(),
@@ -177,10 +168,10 @@ public class InfinityChestDataManager {
             return;
 
         try {
-            File worldDir = level.getServer().getServerDirectory().toFile();
-            File dataDir = new File(worldDir, "data");
-            dataDir.mkdirs();
-            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID.toString() + DATA_SUFFIX);
+            if (dataDir == null) {
+                loadData(); // 初始化dataDir
+            }
+            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID + DATA_SUFFIX);
 
             CompoundTag chestTag = new CompoundTag();
             // 保存容量信息
@@ -197,9 +188,10 @@ public class InfinityChestDataManager {
             return;
 
         try {
-            File worldDir = level.getServer().getServerDirectory().toFile();
-            File dataDir = new File(worldDir, "data");
-            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID.toString() + DATA_SUFFIX);
+            if (dataDir == null) {
+                loadData(); // 初始化dataDir
+            }
+            File dataFile = new File(dataDir, DATA_PREFIX + chestUUID + DATA_SUFFIX);
 
             if (dataFile.exists() && !dataFile.delete()) {
                 LOGGER.warn("Failed to delete chest data file: " + dataFile.getAbsolutePath());

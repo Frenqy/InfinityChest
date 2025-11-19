@@ -27,6 +27,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -122,10 +123,8 @@ public class Infinitychest {
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        // Do something when the server starts
-        LOGGER.info("HELLO from server starting");
-
         // 初始化数据管理器并加载数据
+        LOGGER.info("Initializing InfinityChest data manager");
         InfinityChestDataManager.getInstance(event.getServer().overworld()).loadData();
     }
 
@@ -133,6 +132,28 @@ public class Infinitychest {
     public void onServerStopped(ServerStoppedEvent event) {
         // 服务器关闭时保存数据
         LOGGER.info("Saving InfinityChest data on server shutdown");
+        try {
+            InfinityChestDataManager.getInstance(event.getServer().overworld()).saveData();
+            LOGGER.info("InfinityChest data saved successfully");
+        } catch (Exception e) {
+            LOGGER.error("Failed to save InfinityChest data on server shutdown", e);
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldSave(LevelEvent.Save event) {
+        // 世界保存时自动保存数据
+        if (!event.getLevel().isClientSide()
+                && event.getLevel() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            // 只在主世界触发保存，避免重复保存
+            if (serverLevel.dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+                try {
+                    InfinityChestDataManager.getInstance(serverLevel).saveData();
+                } catch (Exception e) {
+                    LOGGER.debug("Failed to save InfinityChest data during world save", e);
+                }
+            }
+        }
     }
 
     // You can use EventBusSubscriber to automatically register all static methods
