@@ -19,8 +19,12 @@ public class InfinityChestDataManager {
     private static final String DATA_PREFIX = "InfinityChest_";
     private static final String DATA_SUFFIX = ".dat";
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinityChestDataManager.class);
+    private static final int INITIAL_SIZE = 10; // 初始容量
+    private static final int EXPAND_SIZE = 10; // 每次扩容大小
+
     private static InfinityChestDataManager instance;
     private Map<UUID, NonNullList<ItemStack>> chestData = new HashMap<>();
+    private Map<UUID, Integer> chestSizes = new HashMap<>(); // 存储每个箱子的容量
     private Level level;
 
     public static InfinityChestDataManager getInstance(Level level) {
@@ -35,12 +39,77 @@ public class InfinityChestDataManager {
         if (!chestData.containsKey(chestUUID)) {
             loadChestData(chestUUID);
         }
-        return chestData.computeIfAbsent(chestUUID, k -> NonNullList.withSize(27, ItemStack.EMPTY));
+
+        if (!chestData.containsKey(chestUUID)) {
+            // 创建新的箱子数据
+            chestSizes.put(chestUUID, INITIAL_SIZE);
+            NonNullList<ItemStack> newItems = NonNullList.withSize(INITIAL_SIZE, ItemStack.EMPTY);
+            chestData.put(chestUUID, newItems);
+            saveChestData(chestUUID); // 立即保存新箱子
+        }
+
+        return chestData.get(chestUUID);
     }
 
     public void setChestItems(UUID chestUUID, NonNullList<ItemStack> items) {
         chestData.put(chestUUID, items);
         saveChestData(chestUUID);
+    }
+
+    public int getChestSize(UUID chestUUID) {
+        return chestSizes.getOrDefault(chestUUID, INITIAL_SIZE);
+    }
+
+    public NonNullList<ItemStack> expandChestIfNeeded(UUID chestUUID) {
+        NonNullList<ItemStack> items = getChestItems(chestUUID);
+        int currentSize = getChestSize(chestUUID);
+
+        // 检查是否需要扩容（当最后一个位置被占用时）
+        if (currentSize > 0 && !items.get(currentSize - 1).isEmpty()) {
+            int newSize = currentSize + EXPAND_SIZE;
+            NonNullList<ItemStack> newItems = NonNullList.withSize(newSize, ItemStack.EMPTY);
+
+            // 复制旧数据
+            for (int i = 0; i < currentSize; i++) {
+                newItems.set(i, items.get(i));
+            }
+
+            chestData.put(chestUUID, newItems);
+            chestSizes.put(chestUUID, newSize);
+            saveChestData(chestUUID);
+
+            LOGGER.info("Expanded chest {} from {} to {} slots", chestUUID.toString().substring(0, 8), currentSize,
+                    newSize);
+            return newItems;
+        }
+
+        return items;
+    }
+
+    // 强制扩容方法，用于确保有足够空间
+    public NonNullList<ItemStack> ensureCapacity(UUID chestUUID, int neededSlots) {
+        NonNullList<ItemStack> items = getChestItems(chestUUID);
+        int currentSize = getChestSize(chestUUID);
+
+        if (neededSlots > currentSize) {
+            int newSize = ((neededSlots - 1) / EXPAND_SIZE + 1) * EXPAND_SIZE; // 向上取整到最近的扩容单位
+            NonNullList<ItemStack> newItems = NonNullList.withSize(newSize, ItemStack.EMPTY);
+
+            // 复制旧数据
+            for (int i = 0; i < Math.min(currentSize, items.size()); i++) {
+                newItems.set(i, items.get(i));
+            }
+
+            chestData.put(chestUUID, newItems);
+            chestSizes.put(chestUUID, newSize);
+            saveChestData(chestUUID);
+
+            LOGGER.info("Ensured capacity for chest {} from {} to {} slots", chestUUID.toString().substring(0, 8),
+                    currentSize, newSize);
+            return newItems;
+        }
+
+        return items;
     }
 
     public void removeChestData(UUID chestUUID) {
@@ -82,9 +151,17 @@ public class InfinityChestDataManager {
             if (dataFile.exists()) {
                 CompoundTag chestTag = NbtIo.readCompressed(dataFile.toPath(),
                         net.minecraft.nbt.NbtAccounter.unlimitedHeap());
-                NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+
+                // 加载容量信息
+                int size = chestTag.getInt("Size");
+                if (size <= 0)
+                    size = INITIAL_SIZE; // 兼容旧数据
+
+                NonNullList<ItemStack> items = NonNullList.withSize(size, ItemStack.EMPTY);
                 ContainerHelper.loadAllItems(chestTag, items, level.registryAccess());
+
                 chestData.put(chestUUID, items);
+                chestSizes.put(chestUUID, size);
             }
         } catch (IOException e) {
             LOGGER.error("Failed to load chest data for UUID: " + chestUUID, e);
@@ -106,6 +183,8 @@ public class InfinityChestDataManager {
             File dataFile = new File(dataDir, DATA_PREFIX + chestUUID.toString() + DATA_SUFFIX);
 
             CompoundTag chestTag = new CompoundTag();
+            // 保存容量信息
+            chestTag.putInt("Size", getChestSize(chestUUID));
             ContainerHelper.saveAllItems(chestTag, items, level.registryAccess());
             NbtIo.writeCompressed(chestTag, dataFile.toPath());
         } catch (IOException e) {

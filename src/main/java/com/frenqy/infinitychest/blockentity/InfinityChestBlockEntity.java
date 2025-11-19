@@ -33,7 +33,63 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     private NonNullList<ItemStack> getItems() {
         InfinityChestDataManager manager = getDataManager();
-        return manager != null ? manager.getChestItems(chestUUID) : NonNullList.withSize(27, ItemStack.EMPTY);
+        return manager != null ? manager.getChestItems(chestUUID) : NonNullList.withSize(10, ItemStack.EMPTY);
+    }
+
+    // 智能添加物品的方法，支持自动扩容
+    public ItemStack insertItem(ItemStack stack) {
+        if (stack.isEmpty())
+            return ItemStack.EMPTY;
+
+        NonNullList<ItemStack> items = getItems();
+
+        // 首先尝试合并到现有物品堆
+        for (int i = 0; i < items.size(); i++) {
+            ItemStack existing = items.get(i);
+            if (ItemStack.isSameItemSameComponents(existing, stack)
+                    && existing.getCount() < existing.getMaxStackSize()) {
+                int space = existing.getMaxStackSize() - existing.getCount();
+                int toAdd = Math.min(space, stack.getCount());
+                existing.grow(toAdd);
+                stack.shrink(toAdd);
+
+                if (getDataManager() != null) {
+                    getDataManager().setChestItems(chestUUID, items);
+                }
+
+                if (stack.isEmpty())
+                    return ItemStack.EMPTY;
+            }
+        }
+
+        // 寻找空位置
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i).isEmpty()) {
+                items.set(i, stack.copy());
+
+                if (getDataManager() != null) {
+                    getDataManager().setChestItems(chestUUID, items);
+                }
+
+                return ItemStack.EMPTY;
+            }
+        }
+
+        // 如果没有空位，尝试扩容
+        if (getDataManager() != null) {
+            items = getDataManager().expandChestIfNeeded(chestUUID);
+
+            // 在新扩容的位置放置物品
+            for (int i = 0; i < items.size(); i++) {
+                if (items.get(i).isEmpty()) {
+                    items.set(i, stack.copy());
+                    getDataManager().setChestItems(chestUUID, items);
+                    return ItemStack.EMPTY;
+                }
+            }
+        }
+
+        return stack; // 无法插入
     }
 
     public UUID getChestUUID() {
@@ -47,7 +103,8 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public int getContainerSize() {
-        return 27;
+        InfinityChestDataManager manager = getDataManager();
+        return manager != null ? manager.getChestSize(chestUUID) : 10;
     }
 
     @Override
@@ -63,7 +120,11 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public ItemStack getItem(int slot) {
-        return getItems().get(slot);
+        NonNullList<ItemStack> items = getItems();
+        if (slot >= items.size()) {
+            return ItemStack.EMPTY;
+        }
+        return items.get(slot);
     }
 
     @Override
@@ -89,11 +150,20 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
     @Override
     public void setItem(int slot, ItemStack stack) {
         NonNullList<ItemStack> items = getItems();
+
+        // 检查是否需要扩容
+        if (slot >= items.size()) {
+            return; // 不允许超出当前容量
+        }
+
         items.set(slot, stack);
         if (stack.getCount() > this.getMaxStackSize()) {
             stack.setCount(this.getMaxStackSize());
         }
+
         if (getDataManager() != null) {
+            // 尝试扩容（如果需要）
+            items = getDataManager().expandChestIfNeeded(chestUUID);
             getDataManager().setChestItems(chestUUID, items);
         }
         this.setChanged();
@@ -144,8 +214,9 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
     @Override
     public int[] getSlotsForFace(Direction side) {
         // Allow access to all slots from all sides
-        int[] slots = new int[27];
-        for (int i = 0; i < 27; i++) {
+        int size = getContainerSize();
+        int[] slots = new int[size];
+        for (int i = 0; i < size; i++) {
             slots[i] = i;
         }
         return slots;
@@ -153,11 +224,28 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public boolean canPlaceItemThroughFace(int index, ItemStack itemStack, Direction direction) {
-        return true; // Allow placing items from any direction
+        // 对于漏斗等自动化设备，我们使用智能插入而不是固定索引
+        return !itemStack.isEmpty();
     }
 
     @Override
     public boolean canTakeItemThroughFace(int index, ItemStack stack, Direction direction) {
-        return true; // Allow taking items from any direction
+        return index < getContainerSize(); // 只允许从有效范围内取出物品
+    }
+
+    // 重写以支持智能插入
+    public boolean insertItemFromHopper(ItemStack stack) {
+        if (stack.isEmpty())
+            return false;
+
+        ItemStack remaining = insertItem(stack.copy());
+        int inserted = stack.getCount() - remaining.getCount();
+
+        if (inserted > 0) {
+            stack.shrink(inserted);
+            return true;
+        }
+
+        return false;
     }
 }
