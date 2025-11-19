@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,7 +25,7 @@ public class InfinityChestDataManager {
     private static final int EXPAND_SIZE = 10; // 每次扩容大小
 
     private static InfinityChestDataManager instance;
-    private final Map<UUID, NonNullList<ItemStack>> chestData = new HashMap<>();
+    private final Map<UUID, List<ItemStack>> chestData = new HashMap<>();
     private final Map<UUID, Integer> chestSizes = new HashMap<>(); // 存储每个箱子的容量
     private final Map<UUID, Boolean> dirtyChests = new HashMap<>(); // 跟踪需要保存的箱子
     private Level level;
@@ -37,15 +39,18 @@ public class InfinityChestDataManager {
         return instance;
     }
 
-    public NonNullList<ItemStack> getChestItems(UUID chestUUID) {
-        NonNullList<ItemStack> items = chestData.get(chestUUID);
+    public List<ItemStack> getChestItems(UUID chestUUID) {
+        List<ItemStack> items = chestData.get(chestUUID);
         if (items == null) {
             loadChestData(chestUUID);
             items = chestData.get(chestUUID);
 
             if (items == null) {
                 // 创建新的箱子数据
-                items = NonNullList.withSize(INITIAL_SIZE, ItemStack.EMPTY);
+                items = new ArrayList<>();
+                for (int i = 0; i < INITIAL_SIZE; i++) {
+                    items.add(ItemStack.EMPTY);
+                }
                 chestData.put(chestUUID, items);
                 chestSizes.put(chestUUID, INITIAL_SIZE);
                 markDirty(chestUUID);
@@ -54,7 +59,7 @@ public class InfinityChestDataManager {
         return items;
     }
 
-    public void setChestItems(UUID chestUUID, NonNullList<ItemStack> items) {
+    public void setChestItems(UUID chestUUID, List<ItemStack> items) {
         chestData.put(chestUUID, items);
         markDirty(chestUUID);
     }
@@ -67,8 +72,8 @@ public class InfinityChestDataManager {
         return chestSizes.getOrDefault(chestUUID, INITIAL_SIZE);
     }
 
-    public NonNullList<ItemStack> expandChestIfNeeded(UUID chestUUID) {
-        NonNullList<ItemStack> items = getChestItems(chestUUID);
+    public List<ItemStack> expandChestIfNeeded(UUID chestUUID) {
+        List<ItemStack> items = getChestItems(chestUUID);
         int currentSize = getChestSize(chestUUID);
 
         // 检查是否需要扩容（当最后一个位置被占用时）
@@ -153,10 +158,16 @@ public class InfinityChestDataManager {
                 // 加载容量信息
                 int size = chestTag.getInt("Size");
                 if (size <= 0)
-                    size = INITIAL_SIZE; // 兼容旧数据
+                    size = INITIAL_SIZE;
 
-                NonNullList<ItemStack> items = NonNullList.withSize(size, ItemStack.EMPTY);
-                ContainerHelper.loadAllItems(chestTag, items, level.registryAccess());
+                NonNullList<ItemStack> nonNullItems = NonNullList.withSize(size, ItemStack.EMPTY);
+                ContainerHelper.loadAllItems(chestTag, nonNullItems, level.registryAccess());
+
+                // 转换为ArrayList
+                List<ItemStack> items = new ArrayList<>();
+                for (ItemStack item : nonNullItems) {
+                    items.add(item);
+                }
 
                 chestData.put(chestUUID, items);
                 chestSizes.put(chestUUID, size);
@@ -170,7 +181,7 @@ public class InfinityChestDataManager {
         if (level == null || level.isClientSide())
             return;
 
-        NonNullList<ItemStack> items = chestData.get(chestUUID);
+        List<ItemStack> items = chestData.get(chestUUID);
         if (items == null)
             return;
 
@@ -183,7 +194,10 @@ public class InfinityChestDataManager {
             CompoundTag chestTag = new CompoundTag();
             // 保存容量信息
             chestTag.putInt("Size", getChestSize(chestUUID));
-            ContainerHelper.saveAllItems(chestTag, items, level.registryAccess());
+            // 将List转换为NonNullList来保存
+            NonNullList<ItemStack> nonNullItems = NonNullList.create();
+            nonNullItems.addAll(items);
+            ContainerHelper.saveAllItems(chestTag, nonNullItems, level.registryAccess());
             NbtIo.writeCompressed(chestTag, dataFile.toPath());
         } catch (IOException e) {
             LOGGER.error("Failed to save chest data for UUID: " + chestUUID, e);

@@ -5,6 +5,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -16,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class InfinityChestBlockEntity extends BlockEntity implements Container {
     private UUID chestUUID;
     private InfinityChestDataManager dataManager;
-    private NonNullList<ItemStack> cachedItems; // 缓存物品列表
+    private List<ItemStack> cachedItems; // 缓存物品列表
     private int cachedSize = -1; // 缓存容器大小
 
     public InfinityChestBlockEntity(BlockPos pos, BlockState blockState) {
@@ -31,11 +33,17 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         return dataManager;
     }
 
-    private NonNullList<ItemStack> getItems() {
+    private List<ItemStack> getItems() {
         if (cachedItems == null) {
             InfinityChestDataManager manager = getDataManager();
-            cachedItems = manager != null ? manager.getChestItems(chestUUID)
-                    : NonNullList.withSize(10, ItemStack.EMPTY);
+            if (manager != null) {
+                cachedItems = manager.getChestItems(chestUUID);
+            } else {
+                cachedItems = new ArrayList<>();
+                for (int i = 0; i < 10; i++) {
+                    cachedItems.add(ItemStack.EMPTY);
+                }
+            }
         }
         return cachedItems;
     }
@@ -51,7 +59,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         if (manager == null)
             return;
 
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         int currentSize = manager.getChestSize(chestUUID);
 
         // 检查最后一个槽位是否被占用
@@ -66,7 +74,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
         if (stack.isEmpty())
             return ItemStack.EMPTY;
 
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         InfinityChestDataManager manager = getDataManager();
         boolean needsUpdate = false;
 
@@ -136,7 +144,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
 
     @Override
     public boolean isEmpty() {
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         for (ItemStack item : items) {
             if (!item.isEmpty()) {
                 return false;
@@ -147,7 +155,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
 
     @Override
     public ItemStack getItem(int slot) {
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         if (slot >= items.size()) {
             return ItemStack.EMPTY;
         }
@@ -156,7 +164,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
 
     @Override
     public ItemStack removeItem(int slot, int amount) {
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         ItemStack result = ContainerHelper.removeItem(items, slot, amount);
         if (!result.isEmpty()) {
             InfinityChestDataManager manager = getDataManager();
@@ -169,14 +177,23 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
 
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
-        NonNullList<ItemStack> items = getItems();
-        ItemStack result = ContainerHelper.takeItem(items, slot);
+        List<ItemStack> items = getItems();
+        // 为ContainerHelper创建临时NonNullList
+        NonNullList<ItemStack> tempList = NonNullList.create();
+        tempList.addAll(items);
+        ItemStack result = ContainerHelper.takeItem(tempList, slot);
+
+        // 更新原列表但不保存
+        for (int i = 0; i < tempList.size() && i < items.size(); i++) {
+            items.set(i, tempList.get(i));
+        }
+
         return result; // No update版本不需要立即保存
     }
 
     @Override
     public void setItem(int slot, ItemStack stack) {
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
 
         // 检查是否需要扩容
         if (slot >= items.size()) {
@@ -205,7 +222,7 @@ public class InfinityChestBlockEntity extends BlockEntity implements Container {
 
     @Override
     public void clearContent() {
-        NonNullList<ItemStack> items = getItems();
+        List<ItemStack> items = getItems();
         items.replaceAll(ignored -> ItemStack.EMPTY); // 更高效的清空方式
 
         InfinityChestDataManager manager = getDataManager();
