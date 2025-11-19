@@ -103,10 +103,17 @@ public class InfinityChestDataManager {
             return;
 
         if (dataDir == null) {
-            File worldDir = level.getServer().getServerDirectory().toFile();
-            dataDir = new File(worldDir, "data");
-            dataDir.mkdirs();
-            LOGGER.info("InfinityChest data directory initialized: {}", dataDir.getAbsolutePath());
+            // 获取当前世界的存档目录，而不是服务器根目录
+            if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                File worldDir = serverLevel.getServer()
+                        .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toFile();
+                dataDir = new File(worldDir, "data");
+                dataDir.mkdirs();
+                LOGGER.info("InfinityChest data directory initialized for world '{}': {}",
+                        serverLevel.dimension().location(), dataDir.getAbsolutePath());
+            } else {
+                LOGGER.error("Unable to initialize data directory: level is not a ServerLevel");
+            }
         }
     }
 
