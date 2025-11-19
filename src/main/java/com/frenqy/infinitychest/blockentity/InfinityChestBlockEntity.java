@@ -1,5 +1,6 @@
 package com.frenqy.infinitychest.blockentity;
 
+import com.frenqy.infinitychest.data.InfinityChestDataManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -15,12 +16,24 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class InfinityChestBlockEntity extends BlockEntity implements WorldlyContainer {
-    private NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
     private UUID chestUUID;
+    private InfinityChestDataManager dataManager;
 
     public InfinityChestBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.INFINITY_CHEST.get(), pos, blockState);
         this.chestUUID = UUID.randomUUID(); // 初始化时生成UUID
+    }
+
+    private InfinityChestDataManager getDataManager() {
+        if (dataManager == null && level != null) {
+            dataManager = InfinityChestDataManager.getInstance(level);
+        }
+        return dataManager;
+    }
+
+    private NonNullList<ItemStack> getItems() {
+        InfinityChestDataManager manager = getDataManager();
+        return manager != null ? manager.getChestItems(chestUUID) : NonNullList.withSize(27, ItemStack.EMPTY);
     }
 
     public UUID getChestUUID() {
@@ -39,7 +52,8 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public boolean isEmpty() {
-        for (ItemStack item : this.items) {
+        NonNullList<ItemStack> items = getItems();
+        for (ItemStack item : items) {
             if (!item.isEmpty()) {
                 return false;
             }
@@ -49,24 +63,38 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public ItemStack getItem(int slot) {
-        return this.items.get(slot);
+        return getItems().get(slot);
     }
 
     @Override
     public ItemStack removeItem(int slot, int amount) {
-        return ContainerHelper.removeItem(this.items, slot, amount);
+        NonNullList<ItemStack> items = getItems();
+        ItemStack result = ContainerHelper.removeItem(items, slot, amount);
+        if (getDataManager() != null) {
+            getDataManager().setChestItems(chestUUID, items);
+        }
+        return result;
     }
 
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
-        return ContainerHelper.takeItem(this.items, slot);
+        NonNullList<ItemStack> items = getItems();
+        ItemStack result = ContainerHelper.takeItem(items, slot);
+        if (getDataManager() != null) {
+            getDataManager().setChestItems(chestUUID, items);
+        }
+        return result;
     }
 
     @Override
     public void setItem(int slot, ItemStack stack) {
-        this.items.set(slot, stack);
+        NonNullList<ItemStack> items = getItems();
+        items.set(slot, stack);
         if (stack.getCount() > this.getMaxStackSize()) {
             stack.setCount(this.getMaxStackSize());
+        }
+        if (getDataManager() != null) {
+            getDataManager().setChestItems(chestUUID, items);
         }
         this.setChanged();
     }
@@ -78,29 +106,35 @@ public class InfinityChestBlockEntity extends BlockEntity implements WorldlyCont
 
     @Override
     public void clearContent() {
-        this.items.clear();
+        NonNullList<ItemStack> items = getItems();
+        items.clear();
+        if (getDataManager() != null) {
+            getDataManager().setChestItems(chestUUID, items);
+        }
     }
 
     @Override
     public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(tag, this.items, registries);
 
-        // 加载UUID
+        // 只加载UUID，物品数据由外部管理
         if (tag.hasUUID("ChestUUID")) {
             this.chestUUID = tag.getUUID("ChestUUID");
         } else {
-            this.chestUUID = UUID.randomUUID(); // 如果没有UUID，生成一个新的
+            this.chestUUID = UUID.randomUUID();
+        }
+
+        // 加载外部数据
+        if (level != null && !level.isClientSide()) {
+            InfinityChestDataManager.getInstance(level).loadData();
         }
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        ContainerHelper.saveAllItems(tag, this.items, registries);
 
-        // 保存UUID
+        // 只保存UUID，物品数据由外部管理
         if (this.chestUUID != null) {
             tag.putUUID("ChestUUID", this.chestUUID);
         }

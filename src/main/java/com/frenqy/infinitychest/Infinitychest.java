@@ -2,6 +2,7 @@ package com.frenqy.infinitychest;
 
 import com.frenqy.infinitychest.block.InfinityChestBlock;
 import com.frenqy.infinitychest.blockentity.ModBlockEntities;
+import com.frenqy.infinitychest.data.InfinityChestDataManager;
 import com.frenqy.infinitychest.item.InfinityChestBlockItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
@@ -25,6 +26,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -122,6 +124,15 @@ public class Infinitychest {
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
         LOGGER.info("HELLO from server starting");
+
+        // 初始化数据管理器并加载数据
+        InfinityChestDataManager.getInstance(event.getServer().overworld()).loadData();
+    }
+
+    @SubscribeEvent
+    public void onServerStopped(ServerStoppedEvent event) {
+        // 服务器关闭时保存数据
+        LOGGER.info("Saving InfinityChest data on server shutdown");
     }
 
     // You can use EventBusSubscriber to automatically register all static methods

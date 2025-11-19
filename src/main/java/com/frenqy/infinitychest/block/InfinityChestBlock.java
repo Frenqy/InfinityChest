@@ -81,6 +81,8 @@ public class InfinityChestBlock extends BaseEntityBlock {
         if (!state.is(newState.getBlock())) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity instanceof InfinityChestBlockEntity) {
+                // 不掉落箱子内物品，保持数据在外部文件中
+                // 只更新红石信号
                 level.updateNeighbourForOutputSignal(pos, this);
             }
         }
