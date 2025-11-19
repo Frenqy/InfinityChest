@@ -1,6 +1,7 @@
 package com.frenqy.infinitychest;
 
 import com.frenqy.infinitychest.block.InfinityChestBlock;
+import com.frenqy.infinitychest.blockentity.ModBlockEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -85,6 +86,8 @@ public class Infinitychest {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        // Register block entities
+        ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class
