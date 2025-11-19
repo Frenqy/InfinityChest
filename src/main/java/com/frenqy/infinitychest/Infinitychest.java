@@ -1,8 +1,17 @@
 package com.frenqy.infinitychest;
 
+import com.frenqy.infinitychest.block.InfinityChestBlock;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -14,6 +23,10 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 
@@ -34,6 +47,29 @@ public class Infinitychest {
     // registered under the "infinitychest" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister
             .create(Registries.CREATIVE_MODE_TAB, MODID);
+
+    // Register the InfinityChest block
+    public static final DeferredBlock<Block> INFINITY_CHEST = BLOCKS.register("infinity_chest",
+            () -> new InfinityChestBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.WOOD)
+                    .strength(2.5f)
+                    .sound(SoundType.WOOD)
+                    .ignitedByLava()));
+
+    // Register the InfinityChest block item
+    public static final DeferredItem<BlockItem> INFINITY_CHEST_ITEM = ITEMS.register("infinity_chest",
+            () -> new BlockItem(INFINITY_CHEST.get(), new Item.Properties()));
+
+    // Create a creative mode tab for InfinityChest
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> INFINITY_CHEST_TAB = CREATIVE_MODE_TABS
+            .register("infinity_chest_tab",
+                    () -> CreativeModeTab.builder()
+                            .title(Component.translatable("itemGroup.infinitychest"))
+                            .withTabsBefore(CreativeModeTabs.FUNCTIONAL_BLOCKS)
+                            .icon(() -> INFINITY_CHEST_ITEM.get().getDefaultInstance())
+                            .displayItems((parameters, output) -> {
+                                output.accept(INFINITY_CHEST_ITEM.get());
+                            }).build());
 
     // The constructor for the mod class is the first code that is run when your mod
     // is loaded.
@@ -60,11 +96,21 @@ public class Infinitychest {
         // Register our mod's ModConfigSpec so that FML can create and load the config
         // file for us
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+
+        // Register the creative mode tab event
+        modEventBus.addListener(this::addCreative);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         // Some common setup code
         LOGGER.info("HELLO FROM COMMON SETUP");
+    }
+
+    // Add the InfinityChest to the functional blocks tab
+    private void addCreative(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(INFINITY_CHEST_ITEM);
+        }
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
