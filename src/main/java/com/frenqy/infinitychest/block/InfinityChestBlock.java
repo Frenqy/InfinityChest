@@ -65,11 +65,23 @@ public class InfinityChestBlock extends BaseEntityBlock {
         // 获取BlockEntity并将UUID添加到掉落物品
         BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (blockEntity instanceof InfinityChestBlockEntity chestEntity) {
+            UUID chestUUID = chestEntity.getChestUUID();
+
+            // 为每个掉落的箱子物品添加UUID
             for (ItemStack drop : drops) {
-                if (drop.getItem() == this.asItem()) {
-                    UUID chestUUID = chestEntity.getChestUUID();
+                if (drop.getItem() == this.asItem() && chestUUID != null) {
                     ChestUUIDHelper.setUUIDToItem(drop, chestUUID);
                 }
+            }
+
+            // 如果没有通过战利品表掉落箱子，手动创建一个
+            boolean hasChestDrop = drops.stream().anyMatch(drop -> drop.getItem() == this.asItem());
+            if (!hasChestDrop) {
+                ItemStack chestDrop = new ItemStack(this.asItem());
+                if (chestUUID != null) {
+                    ChestUUIDHelper.setUUIDToItem(chestDrop, chestUUID);
+                }
+                drops.add(chestDrop);
             }
         }
 
@@ -82,7 +94,7 @@ public class InfinityChestBlock extends BaseEntityBlock {
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity instanceof InfinityChestBlockEntity) {
                 // 不掉落箱子内物品，保持数据在外部文件中
-                // 只更新红石信号
+                // 但箱子本身需要通过战利品表正常掉落
                 level.updateNeighbourForOutputSignal(pos, this);
             }
         }
