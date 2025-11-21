@@ -40,10 +40,13 @@ public class InfinityChestBlockEntity extends BlockEntity {
         this.chestUUID = uuid;
         this.setChanged();
 
-        this.chestSavedData = ServerLifecycleHooks.getCurrentServer().overworld().getDataStorage().computeIfAbsent(
-                factory,
-                "infinity_chest_data_" + chestUUID.toString());
-        chestSavedData.EnsureUUID(chestUUID.toString());
+        // 只在服务端初始化SavedData
+        if (!this.getLevel().isClientSide && this.getLevel().getServer() != null) {
+            this.chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(
+                    factory,
+                    "infinity_chest_data_" + chestUUID.toString());
+            chestSavedData.EnsureUUID(chestUUID.toString());
+        }
     }
 
     @Override
@@ -57,10 +60,13 @@ public class InfinityChestBlockEntity extends BlockEntity {
             this.chestUUID = UUID.randomUUID();
         }
 
-        this.chestSavedData = ServerLifecycleHooks.getCurrentServer().overworld().getDataStorage().computeIfAbsent(
-                factory,
-                "infinity_chest_data_" + chestUUID.toString());
-        chestSavedData.EnsureUUID(chestUUID.toString());
+        // 只在服务端初始化SavedData
+        if (!this.getLevel().isClientSide && this.getLevel().getServer() != null) {
+            this.chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(
+                    factory,
+                    "infinity_chest_data_" + chestUUID.toString());
+            chestSavedData.EnsureUUID(chestUUID.toString());
+        }
     }
 
     @Override
@@ -87,22 +93,22 @@ public class InfinityChestBlockEntity extends BlockEntity {
 
         @Override
         public int getSlots() {
-            return chestSavedData.getCapacity();
+            return chestSavedData != null ? chestSavedData.getCapacity() : 0;
         }
 
         @Override
         public @NotNull ItemStack getStackInSlot(int slot) {
-            return chestSavedData.getStackInSlot(slot);
+            return chestSavedData != null ? chestSavedData.getStackInSlot(slot) : ItemStack.EMPTY;
         }
 
         @Override
         public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
-            return chestSavedData.insertItem(slot, stack, simulate);
+            return chestSavedData != null ? chestSavedData.insertItem(slot, stack, simulate) : stack;
         }
 
         @Override
         public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
-            return chestSavedData.extractItem(slot, amount, simulate);
+            return chestSavedData != null ? chestSavedData.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
         }
 
         @Override
