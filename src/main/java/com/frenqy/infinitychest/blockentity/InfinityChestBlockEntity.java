@@ -40,12 +40,15 @@ public class InfinityChestBlockEntity extends BlockEntity {
         this.chestUUID = uuid;
         this.setChanged();
 
-        // 只在服务端初始化SavedData
-        if (!this.getLevel().isClientSide && this.getLevel().getServer() != null) {
+        // 只在服务端初始化SavedData，确保 level 不为空
+        if (this.getLevel() != null && !this.getLevel().isClientSide && this.getLevel().getServer() != null) {
             this.chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(
                     factory,
                     "infinity_chest_data_" + chestUUID.toString());
             chestSavedData.EnsureUUID(chestUUID.toString());
+
+            // 通知客户端数据更新
+            this.getLevel().sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
         }
     }
 
@@ -60,12 +63,15 @@ public class InfinityChestBlockEntity extends BlockEntity {
             this.chestUUID = UUID.randomUUID();
         }
 
-        // 只在服务端初始化SavedData
-        if (!this.getLevel().isClientSide && this.getLevel().getServer() != null) {
+        // 只在服务端初始化SavedData，确保 level 不为空
+        if (this.getLevel() != null && !this.getLevel().isClientSide && this.getLevel().getServer() != null) {
             this.chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(
                     factory,
                     "infinity_chest_data_" + chestUUID.toString());
             chestSavedData.EnsureUUID(chestUUID.toString());
+
+            // 通知客户端数据更新
+            this.getLevel().sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
         }
     }
 
@@ -84,7 +90,40 @@ public class InfinityChestBlockEntity extends BlockEntity {
         }
     }
 
+    // 客户端同步方法
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        // 同步UUID到客户端
+        if (this.chestUUID != null) {
+            tag.putUUID("ChestUUID", this.chestUUID);
+        }
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        super.handleUpdateTag(tag, registries);
+        // 客户端接收UUID同步
+        if (tag.hasUUID("ChestUUID")) {
+            this.chestUUID = tag.getUUID("ChestUUID");
+        }
+    }
+
+    // 延迟初始化SavedData，当level可用时调用
+    private void initializeSavedData() {
+        if (this.getLevel() != null && !this.getLevel().isClientSide && this.getLevel().getServer() != null
+                && this.chestUUID != null && this.chestSavedData == null) {
+            this.chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(
+                    factory,
+                    "infinity_chest_data_" + chestUUID.toString());
+            chestSavedData.EnsureUUID(chestUUID.toString());
+        }
+    }
+
     public @Nullable IItemHandler getItemHandler(@Nullable net.minecraft.core.Direction side) {
+        // 确保SavedData已初始化
+        initializeSavedData();
         return itemHandler;
     }
 
