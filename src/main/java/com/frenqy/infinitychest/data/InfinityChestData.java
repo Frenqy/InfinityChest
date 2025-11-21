@@ -77,6 +77,10 @@ public class InfinityChestData extends SavedData {
         return savedData;
     }
 
+    public void EnsureUUID(String uuid) {
+        this.uuid = uuid;
+    }
+
     private void expandCapacity() {
         capacity += EXPAND_SIZE;
 

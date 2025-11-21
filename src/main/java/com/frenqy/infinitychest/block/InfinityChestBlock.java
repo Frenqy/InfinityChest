@@ -50,6 +50,8 @@ public class InfinityChestBlock extends BaseEntityBlock {
             UUID existingUUID = ChestUUIDHelper.getUUIDFromItem(stack);
             if (existingUUID != null) {
                 chestEntity.setChestUUID(existingUUID);
+            } else {
+                chestEntity.setChestUUID(chestEntity.getChestUUID());
             }
             // 如果没有UUID，使用BlockEntity初始化时生成的UUID
         }

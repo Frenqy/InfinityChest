@@ -9,6 +9,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,8 +39,11 @@ public class InfinityChestBlockEntity extends BlockEntity {
     public void setChestUUID(UUID uuid) {
         this.chestUUID = uuid;
         this.setChanged();
-        chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(factory,
-                "infinity_chest_data_" + chestUUID);
+
+        this.chestSavedData = ServerLifecycleHooks.getCurrentServer().overworld().getDataStorage().computeIfAbsent(
+                factory,
+                "infinity_chest_data_" + chestUUID.toString());
+        chestSavedData.EnsureUUID(chestUUID.toString());
     }
 
     @Override
@@ -52,8 +57,10 @@ public class InfinityChestBlockEntity extends BlockEntity {
             this.chestUUID = UUID.randomUUID();
         }
 
-        chestSavedData = this.getLevel().getServer().overworld().getDataStorage().computeIfAbsent(factory,
+        this.chestSavedData = ServerLifecycleHooks.getCurrentServer().overworld().getDataStorage().computeIfAbsent(
+                factory,
                 "infinity_chest_data_" + chestUUID.toString());
+        chestSavedData.EnsureUUID(chestUUID.toString());
     }
 
     @Override
