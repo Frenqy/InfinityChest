@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest.data;
+package com.frenqy.infinitychest.data;
 
-import com.frenqy.infinityChest.InfinityChest;
+import com.frenqy.infinitychest.InfinityChest;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -55,10 +55,12 @@ public class InfinityChestData extends WorldSavedData {
     }
 
     public static InfinityChestData getOrCreate(World world, UUID uuid) {
-        if (world.isRemote) return null;
+        if (world.isRemote)
+            return null;
 
         String dataName = DATA_NAME + "_" + uuid.toString();
-        InfinityChestData data = (InfinityChestData) world.getMapStorage().getOrLoadData(InfinityChestData.class, dataName);
+        InfinityChestData data = (InfinityChestData) world.getMapStorage().getOrLoadData(InfinityChestData.class,
+                dataName);
 
         if (data == null) {
             data = new InfinityChestData(uuid);
@@ -81,7 +83,8 @@ public class InfinityChestData extends WorldSavedData {
 
     @Nonnull
     public ItemStack insertItem(int slot, @Nonnull ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) return ItemStack.EMPTY;
+        if (stack.isEmpty())
+            return ItemStack.EMPTY;
 
         // 如果插入一个物品后槽位超出当前容量，先扩容
         if (getTotalUsedSlots() + 1 >= capacity) {
@@ -151,7 +154,7 @@ public class InfinityChestData extends WorldSavedData {
         }
 
         InfinityChest.LOGGER.info("Expanded infinity chest {} capacity from {} to {}",
-                                 chestUUID, oldCapacity, capacity);
+                chestUUID, oldCapacity, capacity);
         markDirty();
     }
 
@@ -192,7 +195,6 @@ public class InfinityChestData extends WorldSavedData {
 
         this.items.clear();
         NBTTagList itemList = nbt.getTagList("Items", Constants.NBT.TAG_COMPOUND);
-
 
         for (int i = 0; i < itemList.tagCount(); i++) {
             NBTTagCompound itemNBT = itemList.getCompoundTagAt(i);

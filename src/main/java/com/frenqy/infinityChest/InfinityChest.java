@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest;
+package com.frenqy.infinitychest;
 
-import com.frenqy.infinityChest.proxy.CommonProxy;
+import com.frenqy.infinitychest.proxy.CommonProxy;
 import com.frenqy.infinitychest.Tags;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
@@ -15,13 +15,13 @@ public class InfinityChest {
 
     public static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
 
-    @SidedProxy(clientSide = "com.frenqy.infinityChest.proxy.ClientProxy",
-                serverSide = "com.frenqy.infinityChest.proxy.CommonProxy")
+    @SidedProxy(clientSide = "com.frenqy.infinityChest.proxy.ClientProxy", serverSide = "com.frenqy.infinityChest.proxy.CommonProxy")
     public static CommonProxy proxy;
 
     /**
      * <a href="https://cleanroommc.com/wiki/forge-mod-development/event#overview">
-     *     Take a look at how many FMLStateEvents you can listen to via the @Mod.EventHandler annotation here
+     * Take a look at how many FMLStateEvents you can listen to via
+     * the @Mod.EventHandler annotation here
      * </a>
      */
     @Mod.EventHandler

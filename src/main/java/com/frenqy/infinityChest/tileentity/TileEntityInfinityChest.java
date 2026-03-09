@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest.tileentity;
+package com.frenqy.infinitychest.tileentity;
 
-import com.frenqy.infinityChest.data.InfinityChestData;
+import com.frenqy.infinitychest.data.InfinityChestData;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -32,7 +32,8 @@ public class TileEntityInfinityChest extends TileEntity implements ITickable {
     }
 
     public InfinityChestData getChestData() {
-        if (chestUUID == null) return null;
+        if (chestUUID == null)
+            return null;
         return InfinityChestData.getOrCreate(world, chestUUID);
     }
 
@@ -85,13 +86,16 @@ public class TileEntityInfinityChest extends TileEntity implements ITickable {
 
     public int getComparatorOutput() {
         InfinityChestData data = getChestData();
-        if (data == null) return 0;
+        if (data == null)
+            return 0;
 
         int totalItems = data.getTotalItemCount();
         int capacity = data.getCapacity();
 
-        if (totalItems == 0) return 0;
-        if (capacity == 0) return 15;
+        if (totalItems == 0)
+            return 0;
+        if (capacity == 0)
+            return 15;
 
         return Math.min(15, 1 + (totalItems * 14) / capacity);
     }

@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest.init;
+package com.frenqy.infinitychest.init;
 
-import com.frenqy.infinityChest.tileentity.TileEntityInfinityChest;
+import com.frenqy.infinitychest.tileentity.TileEntityInfinityChest;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;

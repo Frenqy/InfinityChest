@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest.items;
+package com.frenqy.infinitychest.items;
 
-import com.frenqy.infinityChest.init.ModBlocks;
+import com.frenqy.infinitychest.init.ModBlocks;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;

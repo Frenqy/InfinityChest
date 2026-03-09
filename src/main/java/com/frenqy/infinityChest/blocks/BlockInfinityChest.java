@@ -1,8 +1,8 @@
-package com.frenqy.infinityChest.blocks;
+package com.frenqy.infinitychest.blocks;
 
-import com.frenqy.infinityChest.InfinityChest;
-import com.frenqy.infinityChest.init.ModBlocks;
-import com.frenqy.infinityChest.tileentity.TileEntityInfinityChest;
+import com.frenqy.infinitychest.InfinityChest;
+import com.frenqy.infinitychest.init.ModBlocks;
+import com.frenqy.infinitychest.tileentity.TileEntityInfinityChest;
 import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.material.Material;
@@ -40,9 +40,9 @@ public class BlockInfinityChest extends Block implements ITileEntityProvider {
 
     @Override
     public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn,
-                                   EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
+            EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
         if (!worldIn.isRemote && playerIn.getHeldItem(hand).isEmpty()) {
-            if(playerIn.isSneaking()){
+            if (playerIn.isSneaking()) {
                 TileEntity te = worldIn.getTileEntity(pos);
                 if (te instanceof TileEntityInfinityChest) {
                     TileEntityInfinityChest chest = (TileEntityInfinityChest) te;
@@ -64,11 +64,13 @@ public class BlockInfinityChest extends Block implements ITileEntityProvider {
                 if (te instanceof TileEntityInfinityChest) {
                     // try push item to down block
                     TileEntity blockEntityBelow = worldIn.getTileEntity(pos.down());
-                    if (blockEntityBelow != null){
-                        IItemHandler downHandler = blockEntityBelow.getCapability(net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, EnumFacing.UP);
-                        if (downHandler != null){
+                    if (blockEntityBelow != null) {
+                        IItemHandler downHandler = blockEntityBelow.getCapability(
+                                net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, EnumFacing.UP);
+                        if (downHandler != null) {
                             TileEntityInfinityChest chest = (TileEntityInfinityChest) te;
-                            IItemHandler chestHandler = chest.getCapability(net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+                            IItemHandler chestHandler = chest.getCapability(
+                                    net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
                             // find first non-empty slot
                             for (int i = 0; i < chestHandler.getSlots(); i++) {
                                 ItemStack stack = chestHandler.getStackInSlot(i);
@@ -90,7 +92,8 @@ public class BlockInfinityChest extends Block implements ITileEntityProvider {
     }
 
     @Override
-    public void onBlockPlacedBy(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack) {
+    public void onBlockPlacedBy(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase placer,
+            ItemStack stack) {
         super.onBlockPlacedBy(worldIn, pos, state, placer, stack);
 
         TileEntity te = worldIn.getTileEntity(pos);
@@ -115,13 +118,14 @@ public class BlockInfinityChest extends Block implements ITileEntityProvider {
     }
 
     @Override
-    public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer) {
+    public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY,
+            float hitZ, int meta, EntityLivingBase placer) {
         return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
     }
 
     @Override
     public IBlockState getStateFromMeta(int meta) {
-        EnumFacing[] facings = {EnumFacing.NORTH, EnumFacing.EAST, EnumFacing.SOUTH, EnumFacing.WEST};
+        EnumFacing[] facings = { EnumFacing.NORTH, EnumFacing.EAST, EnumFacing.SOUTH, EnumFacing.WEST };
         return this.getDefaultState().withProperty(FACING, facings[meta & 3]);
     }
 

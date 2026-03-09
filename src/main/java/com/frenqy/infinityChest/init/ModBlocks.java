@@ -1,7 +1,7 @@
-package com.frenqy.infinityChest.init;
+package com.frenqy.infinitychest.init;
 
-import com.frenqy.infinityChest.blocks.BlockInfinityChest;
-import com.frenqy.infinityChest.items.ItemInfinityChest;
+import com.frenqy.infinitychest.blocks.BlockInfinityChest;
+import com.frenqy.infinitychest.items.ItemInfinityChest;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 

@@ -1,6 +1,6 @@
-package com.frenqy.infinityChest.tileentity;
+package com.frenqy.infinitychest.tileentity;
 
-import com.frenqy.infinityChest.data.InfinityChestData;
+import com.frenqy.infinitychest.data.InfinityChestData;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 
@@ -21,7 +21,8 @@ public class InfinityChestItemHandler implements IItemHandler {
     }
 
     private InfinityChestData getChestData() {
-        if (chestUUID == null || tileEntity.getWorld() == null) return null;
+        if (chestUUID == null || tileEntity.getWorld() == null)
+            return null;
         return InfinityChestData.getOrCreate(tileEntity.getWorld(), chestUUID);
     }
 
@@ -44,10 +45,12 @@ public class InfinityChestItemHandler implements IItemHandler {
     @Nonnull
     @Override
     public ItemStack insertItem(int slot, @Nonnull ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) return ItemStack.EMPTY;
+        if (stack.isEmpty())
+            return ItemStack.EMPTY;
 
         InfinityChestData data = getChestData();
-        if (data == null) return stack;
+        if (data == null)
+            return stack;
 
         // 尝试插入物品，如果容量不足则自动扩容
         ItemStack result = data.insertItem(slot, stack, simulate);
